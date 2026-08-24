@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assertividade do Abastecimento, Estoque Central → Lojas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+ --paper:#F4F2ED; --paper2:#EAE7DF; --ink:#15202B; --ink-soft:#4A5763;
+ --navy:#1E4C77; --panel:#0E2237; --panel2:#163150;
+ --good:#2F8F6B; --warn:#E0A63C; --bad:#C0503A; --bad-deep:#8F3524;
+ --line:#D5D0C4; --line2:#C4BDAE;
+ --display:'Space Grotesk',sans-serif; --body:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-.01em;line-height:1.1}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--warn)}
+
+/* ---------- HERO ---------- */
+.hero{background:var(--panel);color:#EDEAE2;padding:52px 0 46px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.03) 46px 47px);pointer-events:none}
+.hero .wrap{position:relative;z-index:2}
+.hero .eyebrow{color:var(--warn)}
+.hero h1{font-size:clamp(30px,5vw,52px);color:#fff;margin:14px 0 16px;max-width:15ch}
+.hero p.lead{font-size:17px;max-width:60ch;color:#C4CDD6}
+.meta{display:flex;flex-wrap:wrap;gap:22px;margin-top:26px;font-family:var(--mono);font-size:12px;color:#8FA0B0}
+.meta b{color:#DCE4EB;font-weight:500}
+
+/* ---------- VERDICT ---------- */
+.verdict{background:var(--panel2);color:#fff;padding:0}
+.vgrid{display:grid;grid-template-columns:repeat(4,1fr)}
+.vcell{padding:26px 24px;border-right:1px solid rgba(255,255,255,.09)}
+.vcell:last-child{border-right:none}
+.vcell .n{font-family:var(--display);font-size:clamp(30px,4vw,44px);font-weight:700;line-height:1}
+.vcell .l{font-size:12.5px;color:#B4C1CD;margin-top:8px;max-width:24ch}
+.vcell.bad .n{color:#F0A38D}.vcell.good .n{color:#7FD4B0}.vcell.warn .n{color:#F2C878}
+
+/* ---------- SECTIONS ---------- */
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.sec-num{font-family:var(--mono);font-size:13px;color:var(--navy);font-weight:600;border:1.5px solid var(--navy);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+h2{font-size:clamp(23px,3vw,30px)}
+.sec-sub{color:var(--ink-soft);max-width:66ch;margin:14px 0 34px;font-size:15.5px}
+.sec-sub strong{color:var(--ink);font-weight:600}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:38px}
+.kpi{background:var(--paper);padding:20px 20px 18px}
+.kpi .n{font-family:var(--display);font-size:30px;font-weight:700;line-height:1}
+.kpi .u{font-size:15px;color:var(--ink-soft);font-weight:500}
+.kpi .l{font-size:12px;color:var(--ink-soft);margin-top:7px;text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono)}
+
+/* distribution */
+.panel-card{background:#fff;border:1px solid var(--line);padding:26px 26px 22px;margin-bottom:24px}
+.panel-card h3{font-size:16px;margin-bottom:4px}
+.panel-card .cap{font-size:13px;color:var(--ink-soft);margin-bottom:22px}
+.distrow{display:flex;align-items:center;gap:14px;margin-bottom:11px}
+.distrow .lab{width:120px;flex:0 0 120px;font-family:var(--mono);font-size:12.5px;text-align:right;color:var(--ink-soft)}
+.distrow .lab b{color:var(--ink);font-weight:600}
+.bar{height:26px;border-radius:2px;position:relative;min-width:2px;transform-origin:left;animation:grow 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.distrow .val{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);white-space:nowrap}
+.distrow .val b{color:var(--ink)}
+
+/* heatmap */
+.heat-wrap{overflow-x:auto;padding-bottom:6px}
+.heat{border-collapse:collapse;font-family:var(--mono);font-size:10px}
+.heat th{font-weight:500;color:var(--ink-soft);padding:3px 2px;text-align:center;font-size:9.5px}
+.heat th.rowh{text-align:right;padding-right:10px;font-family:var(--body);font-size:11px;white-space:nowrap;color:var(--ink)}
+.heat th.rowh .uf{color:var(--ink-soft);font-size:9.5px}
+.heat td{width:24px;height:22px;text-align:center;color:rgba(255,255,255,.92);font-weight:500;border:1px solid var(--paper)}
+.heat td.z{color:var(--line2);background:var(--paper2)}
+.heat .avg{font-family:var(--body);font-weight:700;font-size:12px;padding-left:10px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px;font-size:11.5px;font-family:var(--mono);color:var(--ink-soft);align-items:center}
+.legend .sw{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:15px;height:15px;border-radius:2px;display:inline-block}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{background:var(--navy);color:#fff;font-family:var(--body);font-weight:600;font-size:12px;text-align:left;padding:11px 14px;text-transform:uppercase;letter-spacing:.03em}
+.tbl th.r,.tbl td.r{text-align:right;font-family:var(--mono)}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--line)}
+.tbl tr:nth-child(even) td{background:#faf9f6}
+.tbl .flag{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.tbl .mrec{font-family:var(--mono);font-weight:600}
+
+/* pedido fulfillment bar */
+.fbar{display:flex;height:52px;border-radius:3px;overflow:hidden;font-family:var(--mono);font-size:12px;font-weight:600;margin-bottom:18px}
+.fbar div{display:flex;align-items:center;justify-content:center;color:#fff;padding:0 6px;min-width:0;white-space:nowrap;overflow:hidden}
+.flegend{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.fl{display:flex;gap:10px;align-items:flex-start;font-size:12.5px}
+.fl i{width:13px;height:13px;border-radius:2px;flex:0 0 13px;margin-top:3px}
+.fl .flt{color:var(--ink);font-weight:600}
+.fl .fls{color:var(--ink-soft);font-family:var(--mono);font-size:11.5px}
+.callout{background:#fff;border:1px solid var(--line);border-left:3px solid var(--warn);padding:18px 20px}
+.callout .co-n{font-family:var(--display);font-size:34px;font-weight:700;color:var(--bad);line-height:1}
+.callout .co-l{font-size:13.5px;color:var(--ink-soft);margin-top:8px}
+.callout .co-l b{color:var(--ink);font-weight:600}
+
+/* money band */
+.money-band{background:#0A1B2E;color:#fff;border-top:1px solid rgba(255,255,255,.08)}
+.money-band .wrap{display:flex;justify-content:space-between;align-items:center;gap:30px;padding:26px 28px;flex-wrap:wrap}
+.mb-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--warn)}
+.mb-big{font-family:var(--display);font-size:clamp(34px,6vw,54px);font-weight:700;color:#7FD4B0;line-height:1;margin:6px 0 6px}
+.mb-cap{font-size:13px;color:#9FB0BF}.mb-cap b{color:#DCE4EB;font-weight:600}
+.mb-right{display:flex;gap:34px}
+.mb-item span{font-family:var(--display);font-size:26px;font-weight:700;color:#fff;display:block}
+.mb-item small{font-size:11.5px;color:#8FA0B0;font-family:var(--mono)}
+@media(max-width:680px){.mb-right{gap:22px}}
+
+/* scenario cards */
+.scn{padding:22px 22px;border:1px solid var(--line);background:#fff}
+.scn-a{border-left:3px solid var(--good)}.scn-b{border-left:3px solid var(--warn)}
+.scn-tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.scn-n{font-family:var(--display);font-size:34px;font-weight:700;line-height:1;margin:8px 0 6px}
+.scn-a .scn-n{color:var(--good)}.scn-b .scn-n{color:#B8860B}
+.scn-l{font-size:12.5px;color:var(--ink-soft)}.scn-l b{color:var(--ink);font-weight:600}
+
+/* rep analysis */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+@media(max-width:820px){.split{grid-template-columns:1fr}}
+.big-stat{background:var(--panel);color:#fff;padding:34px 30px;position:relative;overflow:hidden}
+.big-stat .huge{font-family:var(--display);font-size:clamp(56px,9vw,86px);font-weight:700;line-height:.95;color:#F0A38D}
+.big-stat .sub{font-size:15px;color:#C4CDD6;margin-top:12px;max-width:34ch}
+.stackbar{display:flex;height:44px;border-radius:3px;overflow:hidden;margin:18px 0 10px;font-family:var(--mono);font-size:12px;font-weight:600}
+.stackbar div{display:flex;align-items:center;justify-content:center;color:#fff;padding:0 8px}
+.gbars .grow{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.gbars .gl{width:150px;flex:0 0 150px;font-size:12.5px;text-align:right;color:var(--ink)}
+.gbars .gb{height:22px;background:var(--bad);border-radius:2px;transform-origin:left;animation:grow 1s cubic-bezier(.2,.8,.2,1) both}
+.gbars .gv{font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:nowrap}
+
+/* trend */
+.trend-svg{width:100%;height:auto;display:block}
+
+/* opportunity */
+.opp{background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);color:#fff;padding:52px 0}
+.opp h2{color:#fff}
+.opp .sec-num{border-color:#7FA6C9;color:#B9D0E6}
+.opp ul{list-style:none;margin-top:24px;display:grid;gap:14px;max-width:78ch}
+.opp li{padding-left:30px;position:relative;color:#D4DCE4;font-size:15.5px}
+.opp li:before{content:"→";position:absolute;left:0;color:var(--warn);font-family:var(--mono)}
+.opp li b{color:#fff;font-weight:600}
+.disc{font-size:12.5px;color:#8FA0B0;margin-top:28px;font-family:var(--mono);max-width:80ch;border-top:1px solid rgba(255,255,255,.12);padding-top:18px}
+
+.foot{padding:30px 0;font-size:12px;color:var(--ink-soft);font-family:var(--mono);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+@media(max-width:680px){
+ .vgrid{grid-template-columns:1fr 1fr}
+ .vcell:nth-child(2){border-right:none}
+ .distrow .lab{width:92px;flex-basis:92px}
+ .gbars .gl{width:100px;flex-basis:100px}
+}
+@media print{
+ .hero:after{display:none}
+ section,.hero,.verdict,.opp{break-inside:avoid}
+ body{background:#fff}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+ <div class="wrap">
+  <div class="eyebrow">Controladoria de Logística · Diagnóstico de reposição</div>
+  <h1>O abastecimento das lojas está sendo feito quase todo dia.</h1>
+  <p class="lead">Análise da frequência com que o Estoque Central despacha para cada loja física. A pergunta não é <em>quanto</em> mandamos, é <em>quantas vezes</em>. E se cada viagem repete o mesmo tipo de produto.</p>
+  <div class="meta">
+   <span>PERÍODO <b>02/01 a 30/05/2026</b></span>
+   <span>ORIGEM <b>Estoque Central (EC)</b></span>
+   <span>DESTINOS <b id="m-lojas"></b> lojas</span>
+   <span>NOTAS FISCAIS <b id="m-nfs"></b></span>
+  </div>
+ </div>
+</header>
+
+<div class="verdict">
+ <div class="wrap"><div class="vgrid">
+  <div class="vcell warn"><div class="n" id="v-media"></div><div class="l">dias de abastecimento por loja, em média, a cada semana</div></div>
+  <div class="vcell good"><div class="n" id="v-ideal"></div><div class="l">das vezes em que uma loja foi abastecida só uma vez na semana (o ideal)</div></div>
+  <div class="vcell bad"><div class="n" id="v-extra"></div><div class="l">dos despachos poderiam ser eliminados com consolidação</div></div>
+  <div class="vcell bad"><div class="n" id="v-rep"></div><div class="l">das semanas com repetição levam o mesmo tipo de item</div></div>
+ </div></div>
+</div>
+
+<div class="money-band">
+ <div class="wrap">
+  <div class="mb-left">
+   <div class="mb-eyebrow">Economia potencial de frete</div>
+   <div class="mb-big" id="mb-sav">—</div>
+   <div class="mb-cap">no período (5 meses) consolidando cada loja para 1 envio/semana · <b id="mb-savmes">—</b>/mês</div>
+  </div>
+  <div class="mb-right">
+   <div class="mb-item"><span id="mb-atual">—</span><small>frete atual estimado no período</small></div>
+   <div class="mb-item"><span id="mb-elim">—</span><small>despachos elimináveis</small></div>
+  </div>
+ </div>
+</div>
+
+<section>
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">1</div><h2>Com que frequência cada loja é abastecida?</h2></div>
+  <p class="sec-sub">Cada <strong>despacho</strong> é uma combinação loja + dia: uma saída física do Estoque Central para uma loja num dia. O correto seria <strong>uma consolidação por semana</strong> por loja. Na prática, a média é bem maior, e cada dia a mais é uma viagem a mais, um frete a mais e um ciclo a mais de separação e conferência.</p>
+
+  <div class="kpis">
+   <div class="kpi"><div class="n" id="k-ev"></div><div class="l">Despachos (loja × dia)</div></div>
+   <div class="kpi"><div class="n" id="k-sw"></div><div class="l">Combinações de loja e semana</div></div>
+   <div class="kpi"><div class="n" id="k-media"></div><div class="l">Média de dias/semana</div></div>
+   <div class="kpi"><div class="n" id="k-multi"></div><div class="l">Semanas com 2+ despachos</div></div>
+   <div class="kpi"><div class="n" id="k-extra"></div><div class="l">Despachos elimináveis</div></div>
+  </div>
+
+  <div class="panel-card">
+   <h3>Quantas vezes por semana cada loja é abastecida</h3>
+   <div class="cap">Quantas vezes, por semana, uma loja recebeu carga. Verde é o alvo; quanto mais à direita, mais fragmentado.</div>
+   <div id="dist"></div>
+  </div>
+
+  <div class="panel-card">
+   <h3>Mapa de frequência, loja × semana</h3>
+   <div class="cap">Cada célula é uma semana. O número é <b>em quantos dias a loja teve nota fiscal emitida</b> naquela semana, ou seja, quantos despachos ela recebeu (notas do mesmo dia seguem num único CT-e, então contam como um). Procure o verde: ele quase não aparece.</div>
+   <div class="heat-wrap"><table class="heat" id="heat"></table></div>
+   <div class="legend">
+    <span class="sw"><i style="background:var(--good)"></i>1 · ideal</span>
+    <span class="sw"><i style="background:var(--warn)"></i>2 a 3 · atenção</span>
+    <span class="sw"><i style="background:var(--bad)"></i>4 a 5 · crítico</span>
+    <span class="sw"><i style="background:var(--bad-deep)"></i>6 · diário</span>
+    <span class="sw"><i style="background:var(--paper2);border:1px solid var(--line2)"></i>sem movimento</span>
+   </div>
+  </div>
+
+  <div class="panel-card">
+   <h3>Ranking de lojas por frequência média</h3>
+   <div class="cap">Ordenado pela média de dias de abastecimento por semana. "Elimináveis" = despachos além de 1 por semana.</div>
+   <table class="tbl" id="rank">
+    <thead><tr><th>Loja</th><th>UF</th><th class="r">Semanas</th><th class="r">Despachos</th><th class="r">Média/sem</th><th class="r">Elimináveis</th></tr></thead>
+    <tbody></tbody>
+   </table>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">2</div><h2>Quantos pedidos cada loja gera por semana?</h2></div>
+  <p class="sec-sub">Antes de olhar o faturamento, vale ver o volume de <strong>ordens geradas</strong>. Toda loja gera mais pedidos por semana do que dias de despacho, ou seja, a expedição já consolida algumas ordens por viagem. Mas o número de pedidos abertos por semana é alto na origem, e é aí que a fragmentação começa.</p>
+
+  <div class="panel-card">
+   <h3>Mapa de pedidos por semana, loja × semana</h3>
+   <div class="cap">Cada célula é o número de pedidos distintos que a loja gerou naquela semana (pela data em que o pedido foi feito). Compare com o mapa de despachos: os pedidos são sempre mais.</div>
+   <div class="heat-wrap"><table class="heat" id="pheat"></table></div>
+   <div class="legend" id="pheat-legend"></div>
+  </div>
+
+  <div class="sec-head" style="margin-top:44px"><div class="sec-num">2b</div><h2>O mesmo pedido está sendo faturado em vários dias?</h2></div>
+  <p class="sec-sub">Um pedido deveria sair <strong>de uma vez</strong>. Quando a mesma ordem é faturada em notas de dias diferentes, o separador voltou depois para terminar, quase sempre por <strong>falta de peça na primeira separação</strong>. Cada retorno é um novo despacho, um novo frete e retrabalho na expedição, tudo para completar uma ordem que já existia.</p>
+
+  <div class="panel-card">
+   <h3>Como cada pedido foi faturado</h3>
+   <div class="cap">Dos <b id="pf-tot"></b> pedidos do período. Verde é o ideal: faturamento completo numa nota só.</div>
+   <div class="fbar" id="fbar"></div>
+   <div class="flegend" id="flegend"></div>
+  </div>
+
+  <div class="split">
+   <div class="big-stat">
+    <div class="huge" id="pf-multi"></div>
+    <div class="sub">dos pedidos são faturados em <b>2 ou mais dias</b> (<span id="pf-multin"></span> ordens). O separador precisou voltar noutro dia para completar.</div>
+   </div>
+   <div style="display:grid;gap:16px;align-content:start">
+    <div class="callout">
+     <div class="co-n" id="pf-sku"></div>
+     <div class="co-l">dos pedidos multi-dia repetem o <b>mesmo SKU</b> entre os dias, a assinatura clássica de <b>ruptura na separação</b>: a peça faltou e saiu depois.</div>
+    </div>
+    <div class="callout">
+     <div class="co-n">8×</div>
+     <div class="co-l">é o tamanho de um pedido multi-dia frente a um pedido normal (mediana de <b>109</b> contra <b>14</b> peças). Ordem grande esbarra em ruptura no meio da separação.</div>
+    </div>
+   </div>
+  </div>
+
+  <div class="panel-card" style="margin-top:24px">
+   <h3>Ranking de lojas por pedidos fracionados</h3>
+   <div class="cap">% dos pedidos da loja que foram faturados em mais de um dia. Spread mediano de <b id="pf-spread"></b> dias entre a primeira e a última nota.</div>
+   <table class="tbl" id="prank">
+    <thead><tr><th>Loja</th><th>UF</th><th class="r">Pedidos</th><th class="r">Multi-dia</th><th class="r">% fracionado</th></tr></thead>
+    <tbody></tbody>
+   </table>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">3</div><h2>Quando repete na semana, é o mesmo tipo de item?</h2></div>
+  <p class="sec-sub">Se a loja recebe duas vezes na semana produtos de <strong>grupos diferentes</strong>, ainda há alguma justificativa. Mas se o <strong>mesmo grupo</strong> (Banho, Cama, Recheios…) sai em dias diferentes para a mesma loja na mesma semana, o abastecimento poderia ter saído junto, é o pior cenário, e é o que predomina.</p>
+
+  <div class="split">
+   <div class="big-stat">
+    <div class="huge" id="rep-pct"></div>
+    <div class="sub">das vezes em que uma loja recebeu vários despachos na semana, ao menos um grupo de produto se repetiu entre os dias.</div>
+    <div class="stackbar" id="rep-stack"></div>
+    <div style="font-family:var(--mono);font-size:11px;color:#8FA0B0">repete o tipo · varia o tipo</div>
+   </div>
+   <div class="panel-card" style="margin:0">
+    <h3>Grupos que mais reaparecem na mesma semana</h3>
+    <div class="cap">Quantas vezes o mesmo grupo saiu em 2+ dias diferentes para uma loja na mesma semana.</div>
+    <div class="gbars" id="gbars"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">4</div><h2>A frequência está melhorando ou piorando?</h2></div>
+  <p class="sec-sub">Média de dias de abastecimento por loja, semana a semana. Uma linha estável e alta indica que o padrão é estrutural, não um pico pontual.</p>
+  <div class="panel-card">
+   <svg class="trend-svg" id="trend" viewBox="0 0 1000 320" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">5</div><h2>Quanto essa fragmentação custa em frete?</h2></div>
+  <p class="sec-sub">Cada despacho terceirizado é cobrado pela regra do TMS: <strong>o maior valor entre o percentual sobre a nota e o frete mínimo</strong>. As Outlet Campinas e Catarina ficam de fora, pois vão de <strong>frota própria, 1× por semana</strong>. Consolidar não reduz o percentual (o valor faturado é o mesmo), mas <strong>elimina mínimos repetidos</strong>, e é daí que vem a economia.</p>
+
+  <div class="kpis">
+   <div class="kpi"><div class="n" id="f-atual"></div><div class="l">Frete atual (período)</div></div>
+   <div class="kpi"><div class="n" id="f-mes"></div><div class="l">Frete médio/mês</div></div>
+   <div class="kpi"><div class="n" id="f-min"></div><div class="l">Despachos pagando o mínimo</div></div>
+   <div class="kpi"><div class="n" id="f-desp"></div><div class="l">Despachos terceirizados</div></div>
+  </div>
+
+  <div class="split">
+   <div class="panel-card" style="margin:0">
+    <h3>Tabela de frete aplicada</h3>
+    <div class="cap">Cobrança = MAX(valor da nota × percentual ; frete mínimo), por UF.</div>
+    <table class="tbl" id="ftbl">
+     <thead><tr><th>Destino / UF</th><th class="r">Percentual</th><th class="r">Mínimo</th><th class="r">Despachos</th><th class="r">Frete no período</th></tr></thead>
+     <tbody></tbody>
+    </table>
+    <div class="cap" style="margin-top:14px">Envio próprio (sem frete terceirizado): Outlet Campinas e Outlet Catarina.</div>
+   </div>
+   <div style="display:grid;gap:16px;align-content:start">
+    <div class="scn scn-a">
+     <div class="scn-tag">Cenário ideal · 1 envio/semana</div>
+     <div class="scn-n" id="sc1-sav"></div>
+     <div class="scn-l">economia estimada no período · <b id="sc1-mes"></b>/mês · <b id="sc1-pct"></b> do frete</div>
+    </div>
+    <div class="scn scn-b">
+     <div class="scn-tag">Cenário realista · 2 janelas fixas/semana</div>
+     <div class="scn-n" id="sc2-sav"></div>
+     <div class="scn-l">economia estimada no período · <b id="sc2-mes"></b>/mês · <b id="sc2-pct"></b> do frete</div>
+    </div>
+   </div>
+  </div>
+
+  <div class="panel-card" style="margin-top:24px">
+   <h3>Onde está a economia — top lojas (cenário 1×/semana)</h3>
+   <div class="cap">"Frete atual" é o estimado no período; "economia" é o que cai ao consolidar a loja para 1 envio semanal.</div>
+   <table class="tbl" id="frank">
+    <thead><tr><th>Loja</th><th>UF</th><th class="r">Despachos</th><th class="r">Frete atual</th><th class="r">Economia 1×/sem</th></tr></thead>
+    <tbody></tbody>
+   </table>
+  </div>
+ </div>
+</section>
+
+<section class="opp" style="border:none">
+ <div class="wrap">
+  <div class="sec-head"><div class="sec-num">›</div><h2>A oportunidade</h2></div>
+  <p class="sec-sub" style="color:#C4CDD6">Consolidar o abastecimento de cada loja em menos janelas por semana ataca custo de frete e esforço humano ao mesmo tempo.</p>
+  <ul>
+   <li>O frete terceirizado no período é estimado em <b id="o-fatual"></b> (<b id="o-fmes"></b>/mês). Consolidar para <b>1 envio/semana</b> economizaria cerca de <b id="o-fsav"></b> no período, <b id="o-fsavmes"></b>/mês.</li>
+   <li><b id="o-pmulti"></b> pedidos foram faturados em vários dias, o desperdício mais claro: a ordem já existia e voltou a ser separada. Em <b id="o-psku"></b> deles a mesma peça saiu depois, apontando <b>ruptura de estoque na separação</b>, não erro de calendário.</li>
+   <li>Consolidar para <b>2x/semana</b> por loja (dias fixos) reduz a fragmentação da frequência, mantendo folga para urgências.</li>
+   <li>Como <b id="o-rep"></b> das repetições semanais são do <b>mesmo grupo</b>, boa parte é consolidável sem mudar o mix entregue, só o calendário.</li>
+   <li>Atacar a acuracidade do estoque do EC reduz os pedidos multi-dia na origem. As lojas do topo dos rankings são o ponto de partida com maior retorno por esforço.</li>
+  </ul>
+  <p class="disc">Nota de método: frete estimado por despacho (loja × dia) pela regra MAX(valor da nota × percentual da UF ; frete mínimo da UF), usando a tabela informada (SP 1,11%/R$ 66,82 · RJ e MG 2,89%/R$ 99,89 · DF 2,15%/R$ 66,67). Valor da nota = soma da coluna Valor. Outlet Campinas e Catarina excluídas do frete (frota própria, 1×/semana). A economia vem de fundir mínimos repetidos ao consolidar; o percentual não muda, pois o valor faturado é o mesmo. Se a cobrança real for por NF (e não por despacho), a economia tende a ser maior. Grãos: um despacho = uma loja num dia (a NF confirma 1 destino e 1 data por nota); um pedido pode gerar várias notas e vários dias. "Mesmo SKU" = mesmo Produto e Cor em datas diferentes dentro do pedido. Semana em padrão ISO. Base: 5 meses (jan–mai/2026).</p>
+ </div>
+</section>
+
+<div class="wrap foot">
+ <span>Base: extrato de reposições EC → lojas · 50.535 linhas · 2026</span>
+ <span>Controladoria de Logística · GVR / Trousseau</span>
+</div>
+
+<script>
+const D = {"kpi": {"eventos": 1744, "store_weeks": 486, "ideal": 42, "ideal_pct": 8.6, "multi": 444, "multi_pct": 91.4, "media_dias": 3.59, "extra": 1258, "extra_pct": 72.1, "lojas": 25, "nfs": 3058}, "dist_dias": [{"dias": 1, "qtd": 42}, {"dias": 2, "qtd": 71}, {"dias": 3, "qtd": 111}, {"dias": 4, "qtd": 123}, {"dias": 5, "qtd": 99}, {"dias": 6, "qtd": 40}], "rep": {"multi": 444, "com_rep": 403, "com_rep_pct": 90.8, "sem_rep": 41, "sem_rep_pct": 9.2}, "grupos_rep": [{"grupo": "BANHO", "repete": 311, "aparece": 437, "pct": 71.2}, {"grupo": "CAMA", "repete": 268, "aparece": 415, "pct": 64.6}, {"grupo": "RECHEIOS", "repete": 196, "aparece": 375, "pct": 52.3}, {"grupo": "COBERTOR / MANTA", "repete": 172, "aparece": 389, "pct": 44.2}, {"grupo": "FRAGRÂNCIA", "repete": 140, "aparece": 426, "pct": 32.9}, {"grupo": "MESA", "repete": 108, "aparece": 282, "pct": 38.3}, {"grupo": "GIFT", "repete": 100, "aparece": 356, "pct": 28.1}, {"grupo": "HOMEWEAR FEMININO", "repete": 97, "aparece": 326, "pct": 29.8}, {"grupo": "HOMEWEAR", "repete": 92, "aparece": 340, "pct": 27.1}, {"grupo": "HOMEWEAR MASCULINO", "repete": 71, "aparece": 306, "pct": 23.2}, {"grupo": "CALÇADOS", "repete": 29, "aparece": 232, "pct": 12.5}, {"grupo": "LIFESTYLE", "repete": 2, "aparece": 48, "pct": 4.2}], "lojas": [{"loja": "IGUATEMI - IGT", "uf": "SP", "semanas": 21, "eventos": 108, "media": 5.14, "pecas": 22215, "extra": 87}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "semanas": 21, "eventos": 96, "media": 4.57, "pecas": 11314, "extra": 75}, {"loja": "CIDADE JARDIM", "uf": "SP", "semanas": 21, "eventos": 95, "media": 4.52, "pecas": 9136, "extra": 74}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "semanas": 22, "eventos": 98, "media": 4.45, "pecas": 11343, "extra": 76}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "semanas": 21, "eventos": 90, "media": 4.29, "pecas": 6393, "extra": 69}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "semanas": 22, "eventos": 94, "media": 4.27, "pecas": 8787, "extra": 72}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "semanas": 21, "eventos": 89, "media": 4.24, "pecas": 6359, "extra": 68}, {"loja": "BH SHOPPING", "uf": "MG", "semanas": 21, "eventos": 83, "media": 3.95, "pecas": 8761, "extra": 62}, {"loja": "LOURDES - BHL", "uf": "MG", "semanas": 21, "eventos": 82, "media": 3.9, "pecas": 8669, "extra": 61}, {"loja": "LEBLON - RJL", "uf": "RJ", "semanas": 21, "eventos": 81, "media": 3.86, "pecas": 11150, "extra": 60}, {"loja": "VILLAGE MALL", "uf": "RJ", "semanas": 22, "eventos": 80, "media": 3.64, "pecas": 7627, "extra": 58}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "semanas": 21, "eventos": 76, "media": 3.62, "pecas": 8683, "extra": 55}, {"loja": "PONTEIO - BHP", "uf": "MG", "semanas": 21, "eventos": 75, "media": 3.57, "pecas": 7783, "extra": 54}, {"loja": "OUTLET CAMPINAS - OC", "uf": "SP", "semanas": 21, "eventos": 75, "media": 3.57, "pecas": 7281, "extra": 54}, {"loja": "GAVEA - RJG", "uf": "RJ", "semanas": 21, "eventos": 71, "media": 3.38, "pecas": 7295, "extra": 50}, {"loja": "IPANEMA - RJI", "uf": "RJ", "semanas": 21, "eventos": 68, "media": 3.24, "pecas": 5898, "extra": 47}, {"loja": "BELVEDERE", "uf": "MG", "semanas": 21, "eventos": 67, "media": 3.19, "pecas": 4018, "extra": 46}, {"loja": "OUTLET CATARINA", "uf": "SP", "semanas": 21, "eventos": 65, "media": 3.1, "pecas": 10890, "extra": 44}, {"loja": "BOAVISTA", "uf": "SP", "semanas": 21, "eventos": 60, "media": 2.86, "pecas": 1361, "extra": 39}, {"loja": "RETAGUARDA - RET", "uf": "SP", "semanas": 20, "eventos": 53, "media": 2.65, "pecas": 1550, "extra": 33}, {"loja": "BARONEZA", "uf": "SP", "semanas": 19, "eventos": 49, "media": 2.58, "pecas": 835, "extra": 30}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "semanas": 18, "eventos": 37, "media": 2.06, "pecas": 458, "extra": 19}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "semanas": 19, "eventos": 39, "media": 2.05, "pecas": 1399, "extra": 20}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "semanas": 6, "eventos": 11, "media": 1.83, "pecas": 269, "extra": 5}, {"loja": "RETA-CICLOVIA", "uf": "SP", "semanas": 2, "eventos": 2, "media": 1.0, "pecas": 92, "extra": 0}], "semanas": [{"sem": "2026-S01", "media": 1.0, "eventos": 3, "lojas": 3}, {"sem": "2026-S02", "media": 3.7, "eventos": 85, "lojas": 23}, {"sem": "2026-S03", "media": 3.29, "eventos": 79, "lojas": 24}, {"sem": "2026-S04", "media": 3.7, "eventos": 85, "lojas": 23}, {"sem": "2026-S05", "media": 3.21, "eventos": 77, "lojas": 24}, {"sem": "2026-S06", "media": 4.08, "eventos": 98, "lojas": 24}, {"sem": "2026-S07", "media": 3.83, "eventos": 88, "lojas": 23}, {"sem": "2026-S08", "media": 3.45, "eventos": 76, "lojas": 22}, {"sem": "2026-S09", "media": 4.0, "eventos": 92, "lojas": 23}, {"sem": "2026-S10", "media": 4.57, "eventos": 105, "lojas": 23}, {"sem": "2026-S11", "media": 4.45, "eventos": 98, "lojas": 22}, {"sem": "2026-S12", "media": 4.09, "eventos": 90, "lojas": 22}, {"sem": "2026-S13", "media": 4.22, "eventos": 97, "lojas": 23}, {"sem": "2026-S14", "media": 3.0, "eventos": 69, "lojas": 23}, {"sem": "2026-S15", "media": 4.28, "eventos": 107, "lojas": 25}, {"sem": "2026-S16", "media": 3.57, "eventos": 82, "lojas": 23}, {"sem": "2026-S17", "media": 2.68, "eventos": 59, "lojas": 22}, {"sem": "2026-S18", "media": 2.78, "eventos": 64, "lojas": 23}, {"sem": "2026-S19", "media": 3.17, "eventos": 73, "lojas": 23}, {"sem": "2026-S20", "media": 4.12, "eventos": 99, "lojas": 24}, {"sem": "2026-S21", "media": 1.86, "eventos": 41, "lojas": 22}, {"sem": "2026-S22", "media": 3.5, "eventos": 77, "lojas": 22}], "weeks": ["S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19", "S20", "S21", "S22"], "matrix": [{"loja": "IGUATEMI - IGT", "uf": "SP", "cells": [0, 5, 5, 5, 6, 6, 6, 5, 5, 6, 5, 6, 6, 4, 6, 4, 5, 4, 5, 6, 3, 5]}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "cells": [0, 5, 5, 5, 3, 5, 4, 4, 6, 6, 6, 5, 5, 3, 5, 5, 4, 3, 5, 5, 2, 5]}, {"loja": "CIDADE JARDIM", "uf": "SP", "cells": [0, 5, 4, 5, 5, 4, 5, 4, 4, 6, 4, 5, 6, 4, 6, 5, 4, 4, 4, 5, 2, 4]}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "cells": [1, 3, 4, 5, 5, 6, 5, 5, 5, 6, 6, 6, 6, 3, 6, 4, 4, 3, 4, 4, 2, 5]}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "cells": [0, 5, 5, 3, 5, 6, 5, 4, 5, 4, 4, 5, 4, 2, 5, 5, 4, 3, 5, 5, 1, 5]}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "cells": [1, 3, 4, 4, 5, 5, 5, 5, 4, 6, 6, 5, 6, 4, 4, 4, 2, 4, 5, 5, 3, 4]}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "cells": [0, 3, 3, 4, 2, 5, 4, 6, 4, 6, 6, 6, 6, 4, 4, 4, 2, 2, 5, 5, 3, 5]}, {"loja": "BH SHOPPING", "uf": "MG", "cells": [0, 5, 2, 4, 4, 6, 3, 3, 4, 5, 6, 5, 5, 3, 5, 4, 2, 4, 3, 5, 1, 4]}, {"loja": "LOURDES - BHL", "uf": "MG", "cells": [0, 5, 4, 4, 2, 6, 3, 3, 5, 4, 5, 4, 5, 3, 6, 4, 3, 2, 4, 4, 3, 3]}, {"loja": "LEBLON - RJL", "uf": "RJ", "cells": [0, 4, 4, 4, 4, 5, 4, 4, 5, 4, 6, 4, 3, 3, 6, 4, 1, 3, 3, 6, 1, 3]}, {"loja": "VILLAGE MALL", "uf": "RJ", "cells": [1, 5, 5, 4, 2, 5, 3, 3, 5, 4, 6, 4, 5, 3, 4, 4, 1, 2, 2, 6, 2, 4]}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "cells": [0, 4, 4, 3, 3, 5, 5, 2, 4, 5, 5, 4, 5, 3, 5, 3, 3, 2, 3, 3, 1, 4]}, {"loja": "PONTEIO - BHP", "uf": "MG", "cells": [0, 5, 2, 3, 3, 5, 4, 3, 4, 4, 5, 4, 5, 1, 4, 2, 5, 3, 4, 5, 1, 3]}, {"loja": "OUTLET CAMPINAS - OC", "uf": "SP", "cells": [0, 4, 4, 4, 4, 2, 3, 3, 5, 5, 4, 3, 4, 3, 4, 3, 3, 4, 5, 4, 1, 3]}, {"loja": "GAVEA - RJG", "uf": "RJ", "cells": [0, 4, 4, 5, 5, 4, 3, 3, 3, 5, 4, 4, 4, 3, 3, 4, 2, 2, 2, 1, 3, 3]}, {"loja": "IPANEMA - RJI", "uf": "RJ", "cells": [0, 3, 3, 4, 3, 5, 4, 4, 3, 4, 2, 4, 4, 3, 4, 3, 1, 3, 2, 5, 3, 1]}, {"loja": "BELVEDERE", "uf": "MG", "cells": [0, 3, 4, 3, 2, 2, 5, 2, 3, 3, 4, 4, 3, 3, 5, 4, 2, 2, 3, 5, 1, 4]}, {"loja": "OUTLET CATARINA", "uf": "SP", "cells": [0, 3, 2, 3, 4, 2, 3, 5, 3, 6, 3, 4, 2, 4, 3, 3, 3, 3, 2, 3, 2, 2]}, {"loja": "BOAVISTA", "uf": "SP", "cells": [0, 3, 1, 4, 2, 2, 3, 3, 4, 3, 4, 2, 3, 3, 6, 4, 1, 3, 2, 4, 1, 2]}, {"loja": "RETAGUARDA - RET", "uf": "SP", "cells": [0, 1, 4, 3, 1, 3, 1, 2, 5, 4, 4, 1, 3, 0, 3, 2, 2, 2, 2, 4, 2, 4]}, {"loja": "BARONEZA", "uf": "SP", "cells": [0, 3, 1, 2, 2, 2, 5, 2, 2, 3, 2, 3, 2, 3, 3, 4, 3, 2, 1, 4, 0, 0]}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "cells": [0, 0, 1, 2, 3, 2, 3, 0, 1, 4, 1, 0, 3, 3, 3, 1, 2, 1, 1, 2, 1, 3]}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "cells": [0, 3, 1, 2, 1, 2, 2, 1, 3, 2, 0, 2, 2, 2, 5, 2, 0, 3, 1, 2, 2, 1]}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "cells": [0, 0, 3, 0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 1, 0, 0]}, {"loja": "RETA-CICLOVIA", "uf": "SP", "cells": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}], "ped": {"total": 2925, "d1_1nf": 2390, "d1_mnf": 153, "d2": 341, "d3": 41, "multi": 382, "multi_pct": 13.1, "d1_1nf_pct": 81.7, "d1_mnf_pct": 5.2, "d2_pct": 11.7, "d3_pct": 1.4, "spread_med": 2.0, "spread_mean": 2.6, "spread_max": 34, "sku_rep": 130, "sku_rep_pct": 34.0, "extranf": 535}, "ped_dist": [{"dias": 1, "qtd": 2543}, {"dias": 2, "qtd": 341}, {"dias": 3, "qtd": 34}, {"dias": 4, "qtd": 7}], "ped_lojas": [{"loja": "IGUATEMI - IGT", "uf": "SP", "pedidos": 235, "multi": 54, "pct": 23.0}, {"loja": "OUTLET CAMPINAS - OC", "uf": "SP", "pedidos": 120, "multi": 22, "pct": 18.3}, {"loja": "OUTLET CATARINA", "uf": "SP", "pedidos": 117, "multi": 21, "pct": 17.9}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "pedidos": 189, "multi": 29, "pct": 15.3}, {"loja": "IPANEMA - RJI", "uf": "RJ", "pedidos": 98, "multi": 15, "pct": 15.3}, {"loja": "LEBLON - RJL", "uf": "RJ", "pedidos": 138, "multi": 20, "pct": 14.5}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "pedidos": 206, "multi": 29, "pct": 14.1}, {"loja": "GAVEA - RJG", "uf": "RJ", "pedidos": 99, "multi": 14, "pct": 14.1}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "pedidos": 158, "multi": 22, "pct": 13.9}, {"loja": "PONTEIO - BHP", "uf": "MG", "pedidos": 110, "multi": 15, "pct": 13.6}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "pedidos": 149, "multi": 20, "pct": 13.4}, {"loja": "VILLAGE MALL", "uf": "RJ", "pedidos": 143, "multi": 18, "pct": 12.6}, {"loja": "LOURDES - BHL", "uf": "MG", "pedidos": 143, "multi": 18, "pct": 12.6}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "pedidos": 128, "multi": 14, "pct": 10.9}, {"loja": "BELVEDERE", "uf": "MG", "pedidos": 104, "multi": 11, "pct": 10.6}, {"loja": "CIDADE JARDIM", "uf": "SP", "pedidos": 172, "multi": 18, "pct": 10.5}, {"loja": "BH SHOPPING", "uf": "MG", "pedidos": 139, "multi": 13, "pct": 9.4}, {"loja": "BOAVISTA", "uf": "SP", "pedidos": 88, "multi": 8, "pct": 9.1}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "pedidos": 11, "multi": 1, "pct": 9.1}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "pedidos": 149, "multi": 13, "pct": 8.7}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "pedidos": 51, "multi": 2, "pct": 3.9}, {"loja": "RETAGUARDA - RET", "uf": "SP", "pedidos": 61, "multi": 2, "pct": 3.3}, {"loja": "BARONEZA", "uf": "SP", "pedidos": 64, "multi": 2, "pct": 3.1}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "pedidos": 51, "multi": 1, "pct": 2.0}, {"loja": "RETA-CICLOVIA", "uf": "SP", "pedidos": 2, "multi": 0, "pct": 0.0}], "frete": {"tot": 389205.98, "mes": 77841.2, "ndesp_terc": 1604, "pct_min": 55.5, "n_min": 891, "n_pct": 713, "frete_min": 71103.62, "frete_pct": 318102.36, "sav1": 45125.41, "sav1_mes": 9025.08, "sav1_pct": 11.6, "consol1": 344080.56, "desp_elim": 1160, "sav2": 36179.66, "sav2_mes": 7235.93, "sav2_pct": 9.3, "consol2": 353026.32, "valor_total": 17422714.14}, "frete_params": {"SP": {"pct": 0.0111, "min": 66.82}, "RJ": {"pct": 0.0289, "min": 99.89}, "MG": {"pct": 0.0289, "min": 99.89}, "DF": {"pct": 0.0215, "min": 66.67}}, "frete_uf": [{"uf": "DF", "n": 90, "frete": 20273.74, "pct": 0.0215, "min": 66.67}, {"uf": "MG", "n": 307, "frete": 105409.32, "pct": 0.0289, "min": 99.89}, {"uf": "RJ", "n": 415, "frete": 142542.81, "pct": 0.0289, "min": 99.89}, {"uf": "SP", "n": 792, "frete": 120980.11, "pct": 0.0111, "min": 66.82}], "frete_lojas": [{"loja": "VILLAGE MALL", "uf": "RJ", "atual": 28716.66, "saving": 2891.71, "ndesp": 80}, {"loja": "CIDADE JARDIM", "uf": "SP", "atual": 14681.82, "saving": 2760.18, "ndesp": 95}, {"loja": "GAVEA - RJG", "uf": "RJ", "atual": 21115.86, "saving": 2637.25, "ndesp": 71}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "atual": 10448.91, "saving": 2635.41, "ndesp": 89}, {"loja": "PONTEIO - BHP", "uf": "MG", "atual": 24181.3, "saving": 2589.0, "ndesp": 75}, {"loja": "BH SHOPPING", "uf": "MG", "atual": 33079.32, "saving": 2475.93, "ndesp": 83}, {"loja": "BELVEDERE", "uf": "MG", "atual": 13867.07, "saving": 2461.25, "ndesp": 67}, {"loja": "BOAVISTA", "uf": "SP", "atual": 4240.4, "saving": 2407.02, "ndesp": 60}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "atual": 12736.09, "saving": 2337.85, "ndesp": 94}, {"loja": "LOURDES - BHL", "uf": "MG", "atual": 34281.63, "saving": 2184.56, "ndesp": 82}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "atual": 15871.58, "saving": 2169.19, "ndesp": 98}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "atual": 19466.78, "saving": 2134.3, "ndesp": 96}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "atual": 20273.74, "saving": 2114.82, "ndesp": 90}, {"loja": "RETAGUARDA - RET", "uf": "SP", "atual": 3831.05, "saving": 2013.59, "ndesp": 53}, {"loja": "BARONEZA", "uf": "SP", "atual": 3510.47, "saving": 1968.67, "ndesp": 49}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "atual": 27683.36, "saving": 1951.02, "ndesp": 76}, {"loja": "IPANEMA - RJI", "uf": "RJ", "atual": 20804.76, "saving": 1843.59, "ndesp": 68}, {"loja": "LEBLON - RJL", "uf": "RJ", "atual": 39131.93, "saving": 1561.07, "ndesp": 81}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "atual": 5090.24, "saving": 1507.45, "ndesp": 39}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "atual": 2836.29, "saving": 1127.39, "ndesp": 37}, {"loja": "IGUATEMI - IGT", "uf": "SP", "atual": 32481.78, "saving": 1021.44, "ndesp": 108}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "atual": 741.3, "saving": 332.72, "ndesp": 11}, {"loja": "RETA-CICLOVIA", "uf": "SP", "atual": 133.64, "saving": 0.0, "ndesp": 2}], "pweeks": ["S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19", "S20", "S21", "S22"], "pmatrix": [{"loja": "IGUATEMI - IGT", "uf": "SP", "cells": [0, 13, 8, 9, 6, 13, 14, 8, 9, 11, 18, 15, 9, 7, 11, 11, 8, 14, 14, 16, 8, 13]}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "cells": [0, 10, 8, 8, 7, 8, 10, 6, 12, 11, 13, 16, 8, 8, 11, 15, 8, 8, 11, 14, 6, 8]}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "cells": [1, 6, 5, 7, 8, 12, 12, 7, 6, 16, 14, 16, 11, 6, 9, 7, 9, 7, 8, 8, 7, 7]}, {"loja": "CIDADE JARDIM", "uf": "SP", "cells": [0, 7, 6, 7, 9, 4, 8, 5, 7, 12, 11, 10, 10, 10, 10, 10, 7, 9, 11, 8, 6, 5]}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "cells": [1, 5, 5, 8, 5, 8, 9, 7, 7, 11, 12, 8, 9, 9, 8, 7, 4, 6, 9, 8, 7, 5]}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "cells": [0, 5, 6, 3, 4, 9, 7, 5, 8, 9, 10, 11, 7, 6, 9, 10, 7, 7, 7, 8, 6, 5]}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "cells": [0, 5, 7, 5, 2, 6, 9, 5, 9, 11, 11, 10, 7, 7, 6, 10, 3, 4, 11, 10, 4, 7]}, {"loja": "LOURDES - BHL", "uf": "MG", "cells": [0, 8, 5, 7, 6, 5, 4, 4, 9, 7, 11, 7, 8, 6, 9, 6, 6, 8, 6, 7, 9, 5]}, {"loja": "BH SHOPPING", "uf": "MG", "cells": [0, 8, 3, 6, 4, 8, 7, 5, 7, 10, 10, 10, 7, 6, 7, 8, 3, 8, 5, 8, 4, 5]}, {"loja": "LEBLON - RJL", "uf": "RJ", "cells": [0, 6, 5, 5, 5, 7, 6, 5, 8, 10, 9, 10, 5, 8, 9, 7, 5, 5, 4, 8, 5, 6]}, {"loja": "VILLAGE MALL", "uf": "RJ", "cells": [1, 10, 6, 4, 5, 6, 8, 5, 9, 10, 9, 7, 8, 6, 8, 7, 3, 4, 3, 9, 7, 8]}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "cells": [0, 8, 5, 3, 4, 6, 6, 3, 7, 10, 5, 10, 9, 6, 9, 7, 6, 3, 5, 6, 5, 5]}, {"loja": "OUTLET CAMPINAS - OC", "uf": "SP", "cells": [0, 6, 6, 6, 6, 2, 6, 5, 5, 9, 11, 10, 5, 4, 4, 3, 4, 7, 8, 6, 4, 3]}, {"loja": "OUTLET CATARINA", "uf": "SP", "cells": [0, 6, 4, 6, 6, 3, 9, 8, 4, 11, 10, 11, 5, 4, 3, 4, 4, 4, 4, 4, 5, 2]}, {"loja": "PONTEIO - BHP", "uf": "MG", "cells": [0, 6, 3, 4, 4, 6, 6, 3, 3, 8, 7, 10, 6, 3, 6, 5, 7, 3, 3, 9, 5, 3]}, {"loja": "BELVEDERE", "uf": "MG", "cells": [0, 5, 3, 3, 2, 2, 8, 2, 4, 6, 7, 5, 5, 6, 7, 7, 5, 4, 5, 7, 5, 6]}, {"loja": "GAVEA - RJG", "uf": "RJ", "cells": [0, 4, 5, 5, 5, 6, 5, 5, 4, 8, 5, 10, 5, 5, 4, 5, 3, 3, 2, 1, 5, 4]}, {"loja": "IPANEMA - RJI", "uf": "RJ", "cells": [0, 4, 5, 4, 4, 4, 6, 4, 3, 7, 5, 5, 5, 4, 5, 6, 3, 5, 4, 7, 5, 3]}, {"loja": "BOAVISTA", "uf": "SP", "cells": [0, 4, 2, 5, 2, 2, 5, 4, 5, 3, 5, 5, 5, 6, 7, 6, 3, 4, 4, 6, 2, 3]}, {"loja": "BARONEZA", "uf": "SP", "cells": [0, 3, 3, 2, 3, 2, 5, 2, 3, 3, 3, 3, 4, 3, 8, 5, 3, 4, 2, 3, 0, 0]}, {"loja": "RETAGUARDA - RET", "uf": "SP", "cells": [0, 1, 5, 4, 1, 5, 2, 0, 7, 4, 5, 2, 2, 0, 4, 1, 3, 3, 2, 2, 3, 5]}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "cells": [0, 0, 2, 3, 9, 5, 3, 0, 1, 7, 1, 0, 2, 4, 3, 1, 1, 1, 1, 2, 1, 4]}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "cells": [0, 4, 1, 3, 2, 2, 3, 1, 3, 3, 0, 3, 3, 3, 6, 2, 0, 3, 1, 4, 2, 2]}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "cells": [0, 0, 3, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 1, 0, 0]}, {"loja": "RETA-CICLOVIA", "uf": "SP", "cells": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}], "pmatrix_max": 18, "pweek_tot": [{"sem": "2026-S01", "peds": 3}, {"sem": "2026-S02", "peds": 135}, {"sem": "2026-S03", "peds": 111}, {"sem": "2026-S04", "peds": 117}, {"sem": "2026-S05", "peds": 111}, {"sem": "2026-S06", "peds": 133}, {"sem": "2026-S07", "peds": 158}, {"sem": "2026-S08", "peds": 99}, {"sem": "2026-S09", "peds": 140}, {"sem": "2026-S10", "peds": 197}, {"sem": "2026-S11", "peds": 192}, {"sem": "2026-S12", "peds": 194}, {"sem": "2026-S13", "peds": 145}, {"sem": "2026-S14", "peds": 129}, {"sem": "2026-S15", "peds": 165}, {"sem": "2026-S16", "peds": 150}, {"sem": "2026-S17", "peds": 105}, {"sem": "2026-S18", "peds": 124}, {"sem": "2026-S19", "peds": 130}, {"sem": "2026-S20", "peds": 162}, {"sem": "2026-S21", "peds": 111}, {"sem": "2026-S22", "peds": 114}], "pcomp": [{"loja": "IGUATEMI - IGT", "uf": "SP", "ped_sem": 11.19, "desp_sem": 5.14}, {"loja": "GABRIEL MONTEIRO - GM", "uf": "SP", "ped_sem": 9.81, "desp_sem": 4.57}, {"loja": "JOAO CACHOEIRA - JC", "uf": "SP", "ped_sem": 8.59, "desp_sem": 4.45}, {"loja": "CIDADE JARDIM", "uf": "SP", "ped_sem": 8.19, "desp_sem": 4.52}, {"loja": "HIGIENOPOLIS - HG", "uf": "SP", "ped_sem": 7.18, "desp_sem": 4.27}, {"loja": "IGUATEMI BRASILIA", "uf": "DF", "ped_sem": 7.1, "desp_sem": 4.29}, {"loja": "VILA NOVA CONCEICAO - VNC", "uf": "SP", "ped_sem": 7.1, "desp_sem": 4.24}, {"loja": "LOURDES - BHL", "uf": "MG", "ped_sem": 6.81, "desp_sem": 3.9}, {"loja": "BH SHOPPING", "uf": "MG", "ped_sem": 6.62, "desp_sem": 3.95}, {"loja": "LEBLON - RJL", "uf": "RJ", "ped_sem": 6.57, "desp_sem": 3.86}, {"loja": "VILLAGE MALL", "uf": "RJ", "ped_sem": 6.5, "desp_sem": 3.64}, {"loja": "BARRA SHOPPING - RJB", "uf": "RJ", "ped_sem": 6.1, "desp_sem": 3.62}, {"loja": "OUTLET CAMPINAS - OC", "uf": "SP", "ped_sem": 5.71, "desp_sem": 3.57}, {"loja": "OUTLET CATARINA", "uf": "SP", "ped_sem": 5.57, "desp_sem": 3.1}, {"loja": "PONTEIO - BHP", "uf": "MG", "ped_sem": 5.24, "desp_sem": 3.57}, {"loja": "BELVEDERE", "uf": "MG", "ped_sem": 4.95, "desp_sem": 3.19}, {"loja": "GAVEA - RJG", "uf": "RJ", "ped_sem": 4.71, "desp_sem": 3.38}, {"loja": "IPANEMA - RJI", "uf": "RJ", "ped_sem": 4.67, "desp_sem": 3.24}, {"loja": "BOAVISTA", "uf": "SP", "ped_sem": 4.19, "desp_sem": 2.86}, {"loja": "BARONEZA", "uf": "SP", "ped_sem": 3.37, "desp_sem": 2.58}, {"loja": "RETAGUARDA - RET", "uf": "SP", "ped_sem": 3.21, "desp_sem": 2.65}, {"loja": "RETA-PRODUTO - RPROD", "uf": "SP", "ped_sem": 2.83, "desp_sem": 2.06}, {"loja": "ANGRA DOS REIS", "uf": "RJ", "ped_sem": 2.68, "desp_sem": 2.05}, {"loja": "RETA-MKT/CORP/ECOM - RMKT", "uf": "SP", "ped_sem": 1.83, "desp_sem": 1.83}, {"loja": "RETA-CICLOVIA", "uf": "SP", "ped_sem": 1.0, "desp_sem": 1.0}]};
+const $=s=>document.querySelector(s);
+const nf=n=>n.toLocaleString('pt-BR');
+const brl=n=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const brl2=n=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
+const colorFor=v=>v===0?'var(--paper2)':v===1?'var(--good)':v<=3?'var(--warn)':v<=5?'var(--bad)':'var(--bad-deep)';
+
+// meta + verdict
+$('#m-lojas').textContent=D.kpi.lojas;
+$('#m-nfs').textContent=nf(D.kpi.nfs);
+$('#v-media').textContent=D.kpi.media_dias.toString().replace('.',',')+'×';
+$('#v-ideal').textContent=D.kpi.ideal_pct.toString().replace('.',',')+'%';
+$('#v-extra').textContent=D.kpi.extra_pct.toString().replace('.',',')+'%';
+$('#v-rep').textContent=D.rep.com_rep_pct.toString().replace('.',',')+'%';
+
+// kpis
+$('#k-ev').textContent=nf(D.kpi.eventos);
+$('#k-sw').textContent=nf(D.kpi.store_weeks);
+$('#k-media').innerHTML=D.kpi.media_dias.toString().replace('.',',')+' <span class="u">dias</span>';
+$('#k-multi').innerHTML=nf(D.kpi.multi)+' <span class="u">('+D.kpi.multi_pct.toString().replace('.',',')+'%)</span>';
+$('#k-extra').textContent=nf(D.kpi.extra);
+
+// distribution
+const maxd=Math.max(...D.dist_dias.map(d=>d.qtd));
+$('#dist').innerHTML=D.dist_dias.map(d=>{
+ const w=(d.qtd/maxd*100);
+ const c=colorFor(d.dias);
+ const lab=d.dias===1?'<b>1 dia</b> (ideal)':d.dias+' dias';
+ return `<div class="distrow"><div class="lab">${lab}</div>
+  <div class="bar" style="width:${w}%;background:${c}"></div>
+  <div class="val"><b>${nf(d.qtd)}</b> vezes</div></div>`;
+}).join('');
+
+// heatmap
+let h='<thead><tr><th class="rowh"></th>';
+D.weeks.forEach(w=>h+=`<th>${w}</th>`);
+h+='<th class="avg">méd</th></tr></thead><tbody>';
+D.matrix.forEach(r=>{
+ const nz=r.cells.filter(x=>x>0);
+ const avg=nz.length?(nz.reduce((a,b)=>a+b,0)/nz.length):0;
+ h+=`<tr><th class="rowh">${r.loja.split(' - ')[0]} <span class="uf">${r.uf}</span></th>`;
+ r.cells.forEach(v=>{
+  h+=v===0?`<td class="z">·</td>`:`<td style="background:${colorFor(v)}">${v}</td>`;
+ });
+ h+=`<td class="avg" style="color:${avg>=4?'var(--bad)':avg>=2?'var(--warn)':'var(--good)'}">${avg.toFixed(1).replace('.',',')}</td></tr>`;
+});
+h+='</tbody>';$('#heat').innerHTML=h;
+
+// ranking
+$('#rank tbody').innerHTML=D.lojas.map(l=>{
+ const c=l.media>=4?'var(--bad)':l.media>=2?'var(--warn)':'var(--good)';
+ return `<tr><td><span class="flag" style="background:${c}"></span>${l.loja}</td>
+  <td>${l.uf}</td><td class="r">${l.semanas}</td><td class="r">${nf(l.eventos)}</td>
+  <td class="r mrec" style="color:${c}">${l.media.toFixed(2).replace('.',',')}</td>
+  <td class="r">${nf(l.extra)}</td></tr>`;
+}).join('');
+
+// pedido fragmentation
+const P=D.ped;
+// pedidos-per-week heatmap
+const colorPed=v=>v===0?'var(--paper2)':v<=2?'var(--good)':v<=5?'var(--warn)':v<=9?'var(--bad)':'var(--bad-deep)';
+(function(){
+ let h='<thead><tr><th class="rowh"></th>';
+ D.pweeks.forEach(w=>h+=`<th>${w}</th>`);
+ h+='<th class="avg">méd</th></tr></thead><tbody>';
+ D.pmatrix.forEach(r=>{
+  const nz=r.cells.filter(x=>x>0);
+  const avg=nz.length?(nz.reduce((a,b)=>a+b,0)/nz.length):0;
+  h+=`<tr><th class="rowh">${r.loja.split(' - ')[0]} <span class="uf">${r.uf}</span></th>`;
+  r.cells.forEach(v=>{h+=v===0?`<td class="z">·</td>`:`<td style="background:${colorPed(v)}">${v}</td>`;});
+  h+=`<td class="avg" style="color:${avg>=6?'var(--bad)':avg>=3?'var(--warn)':'var(--good)'}">${avg.toFixed(1).replace('.',',')}</td></tr>`;
+ });
+ h+='</tbody>';document.querySelector('#pheat').innerHTML=h;
+ document.querySelector('#pheat-legend').innerHTML=
+  '<span class="sw"><i style="background:var(--good)"></i>1 a 2 pedidos</span>'+
+  '<span class="sw"><i style="background:var(--warn)"></i>3 a 5</span>'+
+  '<span class="sw"><i style="background:var(--bad)"></i>6 a 9</span>'+
+  '<span class="sw"><i style="background:var(--bad-deep)"></i>10+</span>'+
+  '<span class="sw"><i style="background:var(--paper2);border:1px solid var(--line2)"></i>sem pedidos</span>';
+})();
+$('#pf-tot').textContent=nf(P.total);
+$('#pf-multi').textContent=P.multi_pct.toString().replace('.',',')+'%';
+$('#pf-multin').textContent=nf(P.multi);
+$('#pf-sku').textContent=P.sku_rep_pct.toString().replace('.',',')+'%';
+$('#pf-spread').textContent=P.spread_med.toString().replace('.',',');
+const fsegs=[
+ {k:'d1_1nf',c:'var(--good)',t:'1 nota, 1 dia',s:'faturamento completo'},
+ {k:'d1_mnf',c:'var(--warn)',t:'2+ notas, mesmo dia',s:'fraciona na nota'},
+ {k:'d2',c:'var(--bad)',t:'2 dias',s:'voltou 1 vez'},
+ {k:'d3',c:'var(--bad-deep)',t:'3+ dias',s:'voltou 2+ vezes'}
+];
+$('#fbar').innerHTML=fsegs.map(s=>{
+ const pct=P[s.k+'_pct'];
+ return `<div style="width:${pct}%;background:${s.c}">${pct>=6?pct.toString().replace('.',',')+'%':''}</div>`;
+}).join('');
+$('#flegend').innerHTML=fsegs.map(s=>
+ `<div class="fl"><i style="background:${s.c}"></i><div><div class="flt">${s.t}</div>
+  <div class="fls">${nf(P[s.k])} pedidos · ${P[s.k+'_pct'].toString().replace('.',',')}% · ${s.s}</div></div></div>`
+).join('');
+$('#prank tbody').innerHTML=D.ped_lojas.filter(l=>l.pedidos>=20).map(l=>{
+ const c=l.pct>=15?'var(--bad)':l.pct>=8?'var(--warn)':'var(--good)';
+ return `<tr><td><span class="flag" style="background:${c}"></span>${l.loja}</td>
+  <td>${l.uf}</td><td class="r">${nf(l.pedidos)}</td><td class="r">${l.multi}</td>
+  <td class="r mrec" style="color:${c}">${l.pct.toString().replace('.',',')}%</td></tr>`;
+}).join('');
+
+// rep
+$('#rep-pct').textContent=D.rep.com_rep_pct.toString().replace('.',',')+'%';
+const cr=D.rep.com_rep_pct, sr=D.rep.sem_rep_pct;
+$('#rep-stack').innerHTML=
+ `<div style="width:${cr}%;background:var(--bad)">${cr.toString().replace('.',',')}%</div>
+  <div style="width:${sr}%;background:var(--good)">${sr.toString().replace('.',',')}%</div>`;
+const maxg=Math.max(...D.grupos_rep.map(g=>g.repete));
+$('#gbars').innerHTML=D.grupos_rep.slice(0,10).map(g=>
+ `<div class="grow"><div class="gl">${g.grupo}</div>
+  <div class="gb" style="width:${g.repete/maxg*100}%"></div>
+  <div class="gv"><b>${g.repete}</b> · ${g.pct.toString().replace('.',',')}%</div></div>`
+).join('');
+
+// freight
+const F=D.frete;
+const pctBR=x=>(x*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+$('#mb-sav').textContent=brl(F.sav1);
+$('#mb-savmes').textContent=brl(F.sav1_mes);
+$('#mb-atual').textContent=brl(F.tot);
+$('#mb-elim').textContent=nf(F.desp_elim);
+$('#f-atual').textContent=brl(F.tot);
+$('#f-mes').textContent=brl(F.mes);
+$('#f-min').innerHTML=F.pct_min.toString().replace('.',',')+'% <span class="u">('+nf(F.n_min)+')</span>';
+$('#f-desp').textContent=nf(F.ndesp_terc);
+const ufname={SP:'São Paulo',RJ:'Rio de Janeiro',MG:'Belo Horizonte',DF:'Brasília'};
+$('#ftbl tbody').innerHTML=D.frete_uf.map(u=>
+ `<tr><td>${ufname[u.uf]} <b style="color:var(--ink-soft)">(${u.uf})</b></td>
+  <td class="r">${pctBR(u.pct)}</td><td class="r">${brl2(u.min)}</td>
+  <td class="r">${nf(u.n)}</td><td class="r mrec">${brl(u.frete)}</td></tr>`
+).join('');
+$('#sc1-sav').textContent=brl(F.sav1);$('#sc1-mes').textContent=brl(F.sav1_mes);
+$('#sc1-pct').textContent=F.sav1_pct.toString().replace('.',',')+'%';
+$('#sc2-sav').textContent=brl(F.sav2);$('#sc2-mes').textContent=brl(F.sav2_mes);
+$('#sc2-pct').textContent=F.sav2_pct.toString().replace('.',',')+'%';
+$('#frank tbody').innerHTML=D.frete_lojas.slice(0,12).map(l=>
+ `<tr><td>${l.loja}</td><td>${l.uf}</td><td class="r">${nf(l.ndesp)}</td>
+  <td class="r">${brl(l.atual)}</td><td class="r mrec" style="color:var(--good)">${brl(l.saving)}</td></tr>`
+).join('');
+
+// opportunity
+$('#o-rep').textContent=D.rep.com_rep_pct.toString().replace('.',',')+'%';
+$('#o-pmulti').textContent=nf(P.multi);
+$('#o-psku').textContent=nf(P.sku_rep);
+$('#o-fatual').textContent=brl(F.tot);
+$('#o-fmes').textContent=brl(F.mes);
+$('#o-fsav').textContent=brl(F.sav1);
+$('#o-fsavmes').textContent=brl(F.sav1_mes);
+
+// trend svg
+(function(){
+ const S=D.semanas, W=1000,H=320,pad={l:44,r:20,t:24,b:40};
+ const xs=(i)=>pad.l+(W-pad.l-pad.r)*(i/(S.length-1));
+ const ymax=6, ys=(v)=>pad.t+(H-pad.t-pad.b)*(1-v/ymax);
+ let g='';
+ for(let v=1;v<=6;v++){const y=ys(v);g+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#E4E0D6"/><text x="${pad.l-8}" y="${y+4}" text-anchor="end" font-family="IBM Plex Mono" font-size="11" fill="#8A8576">${v}</text>`;}
+ // ideal line at 1
+ g+=`<line x1="${pad.l}" y1="${ys(1)}" x2="${W-pad.r}" y2="${ys(1)}" stroke="var(--good)" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+ g+=`<text x="${W-pad.r}" y="${ys(1)-7}" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="var(--good)">ideal = 1</text>`;
+ const pts=S.map((s,i)=>[xs(i),ys(s.media)]);
+ const area=`M${pts[0][0]},${ys(0)} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts[pts.length-1][0]},${ys(0)} Z`;
+ g+=`<path d="${area}" fill="rgba(192,80,58,.10)"/>`;
+ g+=`<path d="${pts.map((p,i)=>(i?'L':'M')+p[0]+','+p[1]).join(' ')}" fill="none" stroke="var(--bad)" stroke-width="2.5"/>`;
+ pts.forEach((p,i)=>{g+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#fff" stroke="var(--bad)" stroke-width="2"/>`;
+  if(i%2===0)g+=`<text x="${p[0]}" y="${H-pad.b+18}" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#8A8576">${S[i].sem}</text>`;});
+ $('#trend').innerHTML=g;
+})();
+
+</script>
+</body>
+</html>
